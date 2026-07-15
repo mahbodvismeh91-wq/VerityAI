@@ -1,4 +1,4 @@
-# VerityAI 2.0
+# VerityAI 4
 
 AI assistant "Verity" for Paper 1.21.8 servers, powered by OpenRouter.
 
