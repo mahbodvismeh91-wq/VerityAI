@@ -53,6 +53,15 @@ public class AIHandler {
 
     /** Same as {@link #ask(Player, String)}, but also notifies {@code onAnswer} with the final text (main thread). */
     public void ask(Player player, String question, Consumer<String> onAnswer) {
+        // Callers may invoke this from an async context (e.g. Paper's AsyncChatEvent runs
+        // off the main thread) — but Bukkit events like VerityQuestionEvent, and the
+        // rate-limiter/config reads below, all expect the main thread. Hop once here so
+        // every caller (chat listener, commands, the public API) is safe by default.
+        if (!Bukkit.isPrimaryThread()) {
+            Bukkit.getScheduler().runTask(plugin, () -> ask(player, question, onAnswer));
+            return;
+        }
+
         var cfg = plugin.getConfigManager();
         RateLimiter limiter = plugin.getRateLimiter();
         UUID uuid = player.getUniqueId();
