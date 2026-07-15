@@ -1,0 +1,61 @@
+name: VerityAI
+version: '2.0.0'
+main: com.verityai.plugin.VerityAI
+api-version: '1.21'
+author: YourName
+description: Verity - an AI assistant for your Minecraft server, powered by OpenRouter.
+softdepend: [PlaceholderAPI, Vault, LuckPerms, Essentials]
+
+commands:
+  verity:
+    description: Manage the VerityAI plugin.
+    usage: /verity <reload|clear [player]|info|debug|toggle|chat|personality [name]|owner [player]|map|stats|model [name]|task <add|remove|list>|quest|tutorial <topic>|feedback <good|bad> [correction]>
+
+permissions:
+  verity.use:
+    description: Allows talking to Verity in chat (@verity, conversation mode).
+    default: true
+  verity.reload:
+    description: Allows reloading the VerityAI configuration.
+    default: op
+  verity.info:
+    description: Allows viewing /verity info.
+    default: op
+  verity.debug:
+    description: Allows toggling debug mode.
+    default: op
+  verity.toggle:
+    description: Allows enabling/disabling Verity globally.
+    default: op
+  verity.clear.others:
+    description: Allows clearing another player's conversation memory.
+    default: op
+  verity.personality:
+    description: Allows changing Verity's active personality preset.
+    default: op
+  verity.owner:
+    description: Allows viewing/setting the configured server owner.
+    default: op
+  verity.map:
+    description: Allows viewing the in-chat mini-map (/verity map).
+    default: true
+  verity.stats:
+    description: Allows viewing Verity's usage stats (/verity stats).
+    default: op
+  verity.model:
+    description: Allows viewing/switching the primary AI model (/verity model).
+    default: op
+  verity.task:
+    description: Allows managing your own personal reminders (/verity task).
+    default: true
+  verity.quest:
+    description: Allows requesting a generated quest (/verity quest).
+    default: true
+  verity.feedback:
+    description: Allows recording feedback/corrections for Verity (/verity feedback).
+    default: op
+  # Example permission-tier nodes for permissions.tiers in config.yml — grant
+  # these to whichever groups/players you want a different model or limits.
+  verityai.tier.vip:
+    description: Example VIP tier node for permissions.tiers overrides in config.yml.
+    default: false

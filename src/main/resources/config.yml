@@ -1,0 +1,282 @@
+# =========================================================
+#                  VerityAI Configuration
+# =========================================================
+
+ai:
+  # OpenRouter chat completions endpoint
+  api-url: "https://openrouter.ai/api/v1/chat/completions"
+
+  # One or more OpenRouter API keys. VerityAI tries them in order,
+  # moving to the next one if a request fails (auth/rate-limit errors).
+  api-keys:
+    - "YOUR_OPENROUTER_KEY_HERE"
+
+  # Primary model
+  model: "nvidia/nemotron-3-ultra-550b-a55b:free"
+
+  # Tried in order if the primary model fails
+  fallback-models: []
+
+  max-tokens: 500
+  temperature: 0.7
+
+  # Live token-by-token streaming (shown as a "Verity is thinking..." action bar
+  # effect, with the full answer posted to chat once complete).
+  stream: true
+
+  # Optional, sent as OpenRouter's recommended attribution headers
+  site-url: ""
+  site-name: "VerityAI"
+
+  # Network timeouts and automatic retries.
+  connect-timeout-seconds: 10
+  request-timeout-seconds: 45
+  # How many times to retry the SAME key/model on a transient error (HTTP 429
+  # rate-limited or 5xx server error) before moving on to the next key/model.
+  max-retries-per-key: 2
+
+  # Real OpenAI-style function/tool calling: instead of Verity asking for
+  # things via text tags like [[CMD: ...]], models that support it can call
+  # structured functions directly (get_player_status, remember_fact,
+  # run_command, etc. — see FunctionCallService). More reliable than text
+  # tags, but only works with models that actually support tool calling.
+  # Always uses a non-streaming request (streaming + tool calls together
+  # isn't supported here).
+  function-calling:
+    enabled: false
+    # Max back-and-forth rounds with the model per question before forcing a final answer.
+    max-rounds: 3
+
+  # Optional semantic memory: embeds facts/questions so long-term memory can
+  # be deduplicated and searched by MEANING instead of exact text. Needs an
+  # OpenAI-compatible embeddings endpoint (OpenRouter's default here supports
+  # a subset of embedding models — check their docs for current availability).
+  # Fully optional — everything falls back to plain-text matching if disabled
+  # or if a call fails.
+  embeddings:
+    enabled: false
+    api-url: "https://openrouter.ai/api/v1/embeddings"
+    model: "openai/text-embedding-3-small"
+    # Cosine-similarity threshold (0-1) above which two facts are considered
+    # duplicates of each other.
+    similarity-threshold: 0.88
+
+  # Teach Verity permanent facts/instructions here (server-wide, not per-player).
+  # Every line is always injected into Verity's system prompt, e.g.:
+  #   custom-knowledge:
+  #     - "The shop is at spawn, north of the fountain."
+  #     - "PvP is only allowed in the wilderness, never at spawn."
+  #     - "Always tell new players to read /rules first."
+  custom-knowledge: []
+
+# Verity's personality. "active" picks which preset below is used.
+# Switch anytime with /verity personality <name>.
+personality:
+  active: "default"
+  presets:
+    default: "You are Verity, a friendly Minecraft AI assistant. Help players with Minecraft and server questions clearly and concisely."
+    funny: "You are Verity, a witty and sarcastic (but never mean) Minecraft AI assistant. Keep answers short, playful and helpful."
+    formal: "You are Verity, a formal and professional Minecraft server assistant. Be precise, polite and to the point."
+    guide: "You are Verity, a patient step-by-step Minecraft tutor. Explain things simply, as if teaching a new player."
+    admin: "You are Verity, an assistant for server staff. Be concise and technical, and prioritize accuracy about server state."
+  # Optional: use a different preset in specific worlds (e.g. a stricter
+  # personality in a minigame world, a lore-heavy one in an RPG world).
+  # Falls back to "active" above for any world not listed here.
+  per-world: {}
+    # world_nether: "funny"
+    # rpg_world: "guide"
+
+# Information about your server, injected into every conversation so Verity
+# can answer questions about the server itself.
+server-info:
+  name: ""
+  rules: ""
+  ip: ""
+  website: ""
+  gamemodes: ""
+  version: "1.21.8"
+  # The server owner's exact in-game name. Set/view with /verity owner [player].
+  # Verity is told when it's talking to this player, and (if commands.enabled)
+  # the owner-only-console-whitelist below only ever applies to this name.
+  owner: ""
+
+chat:
+  # Shown before every message Verity sends
+  prefix: "&b[Verity]&r "
+
+  # Players type this before their message to talk to Verity
+  trigger: "@verity"
+
+  # Shown in the action bar while Verity is generating a response
+  thinking-message: "&7Verity is thinking..."
+
+  # auto (matches the player's language/script), fa (Persian script),
+  # en (English), or finglish (Persian language written with Latin letters,
+  # e.g. "salam, chetori?")
+  language: "auto"
+
+  # How long (seconds) a player stays in "conversation mode" after
+  # /verity chat or their last message, before needing the trigger again
+  conversation-timeout-seconds: 60
+
+memory:
+  # How many recent turns (per player) are kept in short-term memory and
+  # resent as context on every request. Older turns aren't just discarded —
+  # they're rolled into a short condensed note (see summary-max-chars) so
+  # Verity still has a rough sense of earlier context.
+  short-term-limit: 10
+
+  # Rough character budget for the total conversation history sent per
+  # request (on top of the system prompt) — protects against one very long
+  # stretch of chatty turns ballooning a single request. Oldest turns are
+  # trimmed first if the budget is exceeded.
+  max-context-chars: 8000
+
+  # Max size (characters) of the rolling condensed summary of turns that have
+  # already scrolled out of short-term memory.
+  summary-max-chars: 800
+
+  # Minutes of inactivity after which a player's short-term conversation
+  # (and condensed summary) is automatically cleared to free up memory.
+  # 0 disables idle cleanup. Conversation history is also always cleared
+  # immediately when a player disconnects.
+  idle-clear-minutes: 30
+
+  # Persisted long-term memory: a small set of remembered facts per player,
+  # stored under plugins/VerityAI/memory/<uuid>.yml and re-injected into
+  # every conversation with that player, across restarts. Kept in an in-RAM
+  # cache and batch-saved every autosave-interval-minutes (plus once on
+  # shutdown), so normal chatting never hits the disk.
+  long-term-enabled: true
+  long-term-max-entries: 100
+  autosave-interval-minutes: 5
+  # How many long-term facts to inject per request. With ai.embeddings.enabled,
+  # these are the facts most SEMANTICALLY RELEVANT to the current question;
+  # without it, this just caps how many (most recent) facts get sent.
+  relevant-facts-limit: 8
+
+  # When long-term-enabled is true, Verity is told it may tag facts worth
+  # remembering (like a player's name or preferences) in its own replies,
+  # and VerityAI automatically saves and hides those tags (skipping anything
+  # that's a near-duplicate of a fact it already knows). Turn this off if
+  # you'd rather only add memories manually.
+  auto-remember: true
+
+  # Save every question/answer to a per-player, per-day transcript file.
+  save-history: true
+  # Delete transcript files older than this many days. 0 = keep forever.
+  history-retention-days: 30
+
+limits:
+  cooldown-seconds: 5
+  max-requests-per-minute: 6
+  max-tokens-per-day: 20000
+  # Server-wide cap across ALL players combined (protects your OpenRouter
+  # budget/rate limit even if many different players ask at once).
+  global-max-requests-per-minute: 60
+  # Max number of AI requests allowed to be in flight across the whole
+  # server at the same time; anyone over this gets a friendly "busy" message
+  # instead of piling more concurrent HTTP requests onto the server.
+  max-concurrent-requests: 10
+
+# Give specific permission groups a different model or different limits than
+# the defaults above. Checked in order — the FIRST tier a player has
+# permission for wins; any field left out falls back to the global default
+# above. Leave "model" out of a tier to keep the default model but still get
+# different limits (e.g. a "no-cooldown" tier for staff).
+permissions:
+  tiers: []
+    # - permission: "verityai.tier.vip"
+    #   model: "openai/gpt-4o-mini"
+    #   cooldown-seconds: 1
+    #   max-requests-per-minute: 20
+    #   max-tokens-per-day: 100000
+    # - permission: "verityai.tier.staff"
+    #   cooldown-seconds: 0
+    #   max-requests-per-minute: 60
+
+moderation:
+  profanity-filter: true
+  blocked-words: []
+
+# Soft integrations — each only activates if the plugin is installed.
+integrations:
+  placeholderapi: true
+  vault: true
+  luckperms: true
+  essentialsx: true
+  # Optional link to a web map (Dynmap/BlueMap/etc.) shown alongside
+  # /verity map. Leave blank to only show the in-chat mini-map.
+  map-web-url: ""
+
+# Lets Verity execute real in-game commands when a player explicitly asks for
+# one (e.g. "@verity can you send me to spawn?"). Disabled by default.
+#
+# SAFETY: commands in "whitelist" are executed AS THE ASKING PLAYER, so
+# Bukkit's normal permission system still applies in full — Verity can never
+# let a player do anything they couldn't already do by typing the command
+# themselves. Only "owner-only-console-whitelist" runs with full console
+# privileges, and only for the single player named in server-info.owner —
+# leave it empty unless you understand the risk.
+commands:
+  enabled: false
+  whitelist: []
+    # - "spawn"
+    # - "home"
+    # - "kit"
+    # - "warp"
+  owner-only-console-whitelist: []
+
+# Personal reminders players can set with /verity task add <HH:mm> <message>
+# (e.g. "remind me at 8:00 to check my farm"). Fires once a day at that time,
+# only if the player is online at that exact minute — there's no offline
+# mail/queue here, just a lightweight in-game nudge.
+tasks:
+  max-per-player: 10
+
+# Verity reacting to notable game moments with a short, config-editable
+# message — NOT a live AI call (keeps these instant and free). Leave any
+# message blank to disable just that one reaction.
+event-reactions:
+  enabled: true
+  messages:
+    on-join: "Welcome back, %player%! Say @verity if you need anything."
+    on-death: "Ouch, %player% died. Better luck next time!"
+    on-boss-defeat: "%player% just defeated a %boss%! Congratulations!"
+    on-raid-start: "A raid has begun in %world%! Stay sharp."
+    on-raid-victory: "The raid in %world% has been defeated!"
+
+# Powers "what happened today?" style questions — keeps a capped, in-memory
+# (not persisted to disk) rolling log of today's public chat that Verity can
+# summarize when asked. Resets at midnight.
+chat-summary:
+  enabled: true
+  max-lines: 300
+  # Character budget of the log actually injected into a single request.
+  max-chars-injected: 3000
+
+# Server-wide "lessons learned" — corrections staff add live via
+# /verity feedback bad <correction> after Verity gets something wrong.
+# Always injected into the system prompt. See also ai.custom-knowledge for
+# config-only (not in-game-editable) permanent facts.
+lessons:
+  max-entries: 30
+
+debug:
+  enabled: false
+  log-requests: true
+  log-errors: true
+
+# Give different permission groups a different model and/or limits, checked
+# in order (first permission the player has wins). Any field left out for a
+# tier falls back to the global default above. None of this is required —
+# leave the list empty to just use the global ai.model / limits.* for everyone.
+permissions:
+  tiers: []
+    # - permission: "verityai.tier.vip"
+    #   model: "openai/gpt-4o-mini"
+    #   cooldown-seconds: 1
+    #   max-requests-per-minute: 20
+    #   max-tokens-per-day: 100000
+    # - permission: "verityai.tier.default"
+    #   max-requests-per-minute: 6
